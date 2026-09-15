@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="500" viewBox="0 0 960 500" role="img" aria-labelledby="title desc">
+  <title id="title">Mochi Desktop Pet preview</title>
+  <desc id="desc">A warm orange cartoon cat standing on a stylized desktop with a speech bubble.</desc>
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7ed"/>
+      <stop offset="1" stop-color="#e0f2fe"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" x2="1">
+      <stop offset="0" stop-color="#1e293b"/>
+      <stop offset="1" stop-color="#334155"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#334155" flood-opacity=".22"/>
+    </filter>
+  </defs>
+
+  <rect width="960" height="500" rx="24" fill="url(#wall)"/>
+  <circle cx="100" cy="92" r="52" fill="#ffffff" opacity=".35"/>
+  <circle cx="840" cy="100" r="82" fill="#ffffff" opacity=".3"/>
+  <path d="M0 405 C180 370 300 430 470 400 C650 368 785 425 960 382 V500 H0Z" fill="#bae6fd" opacity=".75"/>
+  <rect y="452" width="960" height="48" fill="url(#bar)"/>
+  <circle cx="32" cy="476" r="10" fill="#38bdf8"/>
+  <rect x="56" y="467" width="72" height="18" rx="9" fill="#475569"/>
+  <rect x="824" y="469" width="50" height="14" rx="7" fill="#475569"/>
+  <text x="900" y="482" fill="#e2e8f0" font-family="Segoe UI, sans-serif" font-size="16">10:24</text>
+
+  <g transform="translate(370 32)" filter="url(#shadow)">
+    <path d="M20 10 H310 Q326 10 326 26 V100 Q326 116 310 116 H186 L166 140 L151 116 H20 Q4 116 4 100 V26 Q4 10 20 10Z" fill="#fff" stroke="#8f5535" stroke-width="5"/>
+    <text x="165" y="61" text-anchor="middle" fill="#4b342c" font-family="Segoe UI, sans-serif" font-size="25" font-weight="700">Mochi believes in you!</text>
+    <text x="165" y="91" text-anchor="middle" fill="#8f5535" font-family="Segoe UI, sans-serif" font-size="16">double-click for a little encouragement</text>
+  </g>
+
+  <g transform="translate(480 170)" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)">
+    <ellipse cx="0" cy="245" rx="118" ry="22" fill="#64748b" opacity=".28" stroke="none"/>
+    <path d="M79 181 C142 178 151 111 117 100" fill="none" stroke="#8f5535" stroke-width="30"/>
+    <path d="M78 181 C137 176 144 120 118 105" fill="none" stroke="#f6b26b" stroke-width="18"/>
+    <ellipse cx="0" cy="176" rx="82" ry="76" fill="#f8c985" stroke="#8f5535" stroke-width="6"/>
+    <ellipse cx="-43" cy="218" rx="31" ry="29" fill="#fff4dc" stroke="#8f5535" stroke-width="6"/>
+    <ellipse cx="43" cy="218" rx="31" ry="29" fill="#fff4dc" stroke="#8f5535" stroke-width="6"/>
+    <path d="M-74 66 L-68 -4 L-24 39Z" fill="#f6b26b" stroke="#8f5535" stroke-width="6"/>
+    <path d="M24 39 L68 -4 L76 69Z" fill="#f6b26b" stroke="#8f5535" stroke-width="6"/>
+    <path d="M-64 49 L-61 15 L-38 39Z" fill="#f9a8a8" stroke="none"/>
+    <path d="M39 39 L62 15 L68 52Z" fill="#f9a8a8" stroke="none"/>
+    <ellipse cx="0" cy="80" rx="91" ry="75" fill="#f8c985" stroke="#8f5535" stroke-width="6"/>
+    <ellipse cx="0" cy="103" rx="55" ry="35" fill="#fff4dc" stroke="none"/>
+    <path d="M-22 9 L0 39 L22 9 L18 50 H-18Z" fill="#fff4dc" stroke="none"/>
+    <path d="M-49 72 Q-39 58 -29 72" fill="none" stroke="#4b342c" stroke-width="6"/>
+    <path d="M29 72 Q39 58 49 72" fill="none" stroke="#4b342c" stroke-width="6"/>
+    <ellipse cx="-51" cy="91" rx="13" ry="8" fill="#f6a6a6" stroke="none"/>
+    <ellipse cx="51" cy="91" rx="13" ry="8" fill="#f6a6a6" stroke="none"/>
+    <path d="M-7 87 H7 L0 96Z" fill="#b65b5b" stroke="none"/>
+    <path d="M0 96 V104 M0 104 Q-9 112 -17 105 M0 104 Q9 112 17 105" fill="none" stroke="#4b342c" stroke-width="4"/>
+    <path d="M-49 99 L-88 92 M-48 111 L-92 116 M49 99 L88 92 M48 111 L92 116" fill="none" stroke="#8f5535" stroke-width="4"/>
+  </g>
+
+  <g fill="#ef476f" font-family="Segoe UI Symbol, sans-serif" font-weight="700">
+    <text x="655" y="226" font-size="34">♥</text>
+    <text x="705" y="182" font-size="25">♥</text>
+    <text x="676" y="145" font-size="18">♥</text>
+  </g>
+  <text x="42" y="54" fill="#334155" font-family="Segoe UI, sans-serif" font-size="25" font-weight="700">Mochi Desktop Pet</text>
+  <text x="42" y="84" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="17">tiny • offline • dependency-free</text>
+</svg>

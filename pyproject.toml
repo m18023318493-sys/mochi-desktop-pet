@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mochi-desktop-pet"
+version = "0.1.0"
+description = "A tiny, privacy-friendly desktop cat drawn with Python and Tkinter."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "m18023318493-sys" }]
+keywords = ["desktop-pet", "tkinter", "python", "windows", "animation"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Win32 (MS Windows)",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Desktop Environment",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/m18023318493-sys/mochi-desktop-pet"
+Issues = "https://github.com/m18023318493-sys/mochi-desktop-pet/issues"
+
+[project.gui-scripts]
+mochi-pet = "mochi_pet:main"
+
+[tool.setuptools]
+py-modules = ["mochi_pet", "pet_core"]
