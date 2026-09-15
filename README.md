@@ -22,7 +22,7 @@ A tiny animated cat that lives on your desktop. Mochi is drawn entirely with Tki
 
 Requires Python 3.10 or newer with Tkinter (included in the standard Windows installer).
 
-For the easiest Windows setup, download `mochi-desktop-pet-v0.1.0.zip` from the [latest release](https://github.com/m18023318493-sys/mochi-desktop-pet/releases/latest), extract the whole ZIP, then double-click `start_mochi.bat`.
+For the easiest Windows setup, download `mochi-desktop-pet-v0.1.1.zip` from the [latest release](https://github.com/m18023318493-sys/mochi-desktop-pet/releases/latest), extract the whole ZIP, then double-click `start_mochi.bat`.
 
 Or run it from source:
 

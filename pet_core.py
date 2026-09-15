@@ -11,7 +11,7 @@ from typing import Any
 
 WINDOW_WIDTH = 176
 WINDOW_HEIGHT = 206
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 WorkArea = tuple[int, int, int, int]
 
 DEFAULT_SETTINGS: dict[str, Any] = {
