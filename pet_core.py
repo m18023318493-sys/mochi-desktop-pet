@@ -10,8 +10,15 @@ from typing import Any
 
 
 WINDOW_WIDTH = 176
-WINDOW_HEIGHT = 206
-VERSION = "0.3.0"
+WINDOW_HEIGHT = 302
+VERSION = "0.3.1"
+PET_Y_OFFSET = 96
+AVATAR_BASE_Y = 196 + PET_Y_OFFSET
+NORMAL_BUBBLE_BOTTOM = 72
+HYDRATION_BUBBLE_BOTTOM = 92
+NORMAL_BUBBLE_FONT_SIZE = 11
+HYDRATION_BUBBLE_FONT_SIZE = 20
+WALKING_BOB_AMPLITUDE = 2.4
 HYDRATION_INTERVAL_OPTIONS = (30, 45, 60, 90, 120)
 WorkArea = tuple[int, int, int, int]
 
@@ -41,6 +48,18 @@ def settings_path() -> Path:
     else:
         base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
     return base / "MochiDesktopPet" / "settings.json"
+
+
+def window_y_from_saved(y: object) -> object:
+    """Expand the window upward while keeping the pet stage at its old screen Y."""
+    if type(y) is int:
+        return y - PET_Y_OFFSET
+    return y
+
+
+def saved_y_from_window(y: int) -> int:
+    """Persist the pet-stage Y instead of the reserved bubble area's top edge."""
+    return int(y) + PET_Y_OFFSET
 
 
 def normalize_position(

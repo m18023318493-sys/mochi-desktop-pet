@@ -15,6 +15,9 @@ A tiny customizable companion that lives on your desktop. Keep the built-in anim
 - Import a PNG, JPEG, WebP, GIF, or BMP as the desktop character
 - Automatic left/right mirroring, walking bob, and four image-size options
 - Switch back to Mochi without deleting the saved custom image
+- Chinese pet messages, menus, reminder text, and activity dialogs
+- Speech bubbles stay above the character instead of covering its head
+- Extra-large blue Chinese text for hydration reminders
 - Drag Mochi anywhere; position and preferences are remembered
 - Double-click for hearts and a happy message
 - Hydration reminders every 30, 45, 60, 90, or 120 minutes (60 by default)
@@ -29,7 +32,7 @@ A tiny customizable companion that lives on your desktop. Keep the built-in anim
 
 Requires Python 3.10 or newer with Tkinter (included in the standard Windows installer) and Pillow for safe image import.
 
-For the easiest Windows setup, download `mochi-desktop-pet-v0.3.0.zip` from the [latest release](https://github.com/m18023318493-sys/mochi-desktop-pet/releases/latest), extract the whole ZIP, then double-click `start_mochi.bat`. On first launch, the script installs Pillow if it is not already available; this one-time dependency install needs internet access. Mochi itself does not use the network.
+For the easiest Windows setup, download `mochi-desktop-pet-v0.3.1.zip` from the [latest release](https://github.com/m18023318493-sys/mochi-desktop-pet/releases/latest), extract the whole ZIP, then double-click `start_mochi.bat`. On first launch, the script installs Pillow if it is not already available; this one-time dependency install needs internet access. Mochi itself does not use the network.
 
 Or run it from source:
 
@@ -84,11 +87,11 @@ python mochi_pet.py --reset-all-data
 
 ## Custom appearance
 
-Right-click Mochi and choose **Appearance → Choose custom image...**. The selected image is normalized once, stripped of metadata, and copied to Mochi's local data folder as `custom_avatar.png`; the original file is never changed and its path is not retained. Mochi caches left- and right-facing frames, so it does not reopen the photo during every animation frame.
+Right-click Mochi and choose **外观 → 选择自定义图片...**. The selected image is normalized once, stripped of metadata, and copied to Mochi's local data folder as `custom_avatar.png`; the original file is never changed and its path is not retained. Mochi caches left- and right-facing frames, so it does not reopen the photo during every animation frame.
 
 A transparent, tightly cropped full-body PNG gives the best result. JPEG and other opaque images work, but their rectangular background remains visible. Animated GIFs use the first frame. A single photo can move, mirror, and bob, but it cannot produce true leg-by-leg walking; that would require a future multi-frame sprite feature.
 
-Use **Appearance → Use Mochi** to switch back without deleting the custom image, **Use saved custom image** to switch again, or **Remove saved custom image...** to delete Mochi's processed local copy.
+Use **外观 → 使用麻薯形象** to switch back without deleting the custom image, **使用已保存的图片** to switch again, or **删除已保存的图片...** to delete Mochi's processed local copy.
 
 ## 简体中文
 
@@ -99,6 +102,8 @@ Windows 用户安装 Python 3.10+ 后，可以从 [Releases](https://github.com/
 喝水提醒默认开启，每运行 60 分钟提醒一次，22:00–08:00 静默。活跃/空闲统计默认关闭；只有你主动开启后才会在 Windows 上读取“距离上次本机输入经过了多久”这一数值，并仅保存每天的汇总秒数。
 
 透明背景、裁剪紧凑的全身 PNG 效果最好。导入图片会去除 EXIF 等元数据，并只把处理后的副本保存在本机，不上传。单张照片会左右翻转和轻微起伏，但不会产生真实的逐帧腿部动作。
+
+所有宠物提示、菜单和活动窗口均使用中文。气泡位于人物头顶上方，不遮挡图像；喝水提醒使用单独的蓝色大字气泡显示。
 
 ## Privacy and local data
 
@@ -114,7 +119,7 @@ Mochi stores no raw event sequence. It retains at most 30 daily aggregate record
 - `activity.json`: date, aggregate active/idle seconds, water count, and aggregate reminder/snooze seconds
 - `custom_avatar.png`: a bounded, metadata-free copy created only after you select an image
 
-Statistics are collected only while Mochi is running. Long sleep/resume gaps are capped instead of being counted as hours of activity, and a new local-date bucket is created after midnight. Use **Delete activity history...** to clear aggregates, **Remove saved custom image...** to delete the processed image, or `--reset-all-data` to delete all three local data files before launch.
+Statistics are collected only while Mochi is running. Long sleep/resume gaps are capped instead of being counted as hours of activity, and a new local-date bucket is created after midnight. Use **删除活动记录...** to clear aggregates, **删除已保存的图片...** to delete the processed image, or `--reset-all-data` to delete all three local data files before launch.
 
 To uninstall, delete the cloned project (or run `python -m pip uninstall mochi-desktop-pet` if installed) and optionally delete the `MochiDesktopPet` settings folder.
 

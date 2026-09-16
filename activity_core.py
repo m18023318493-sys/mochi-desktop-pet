@@ -61,6 +61,17 @@ def format_duration(seconds: float) -> str:
     return "<1m"
 
 
+def format_duration_zh(seconds: float) -> str:
+    """Format a duration for the Chinese desktop interface."""
+    total_minutes = max(0, int(seconds // 60))
+    hours, minutes = divmod(total_minutes, 60)
+    if hours:
+        return f"{hours} 小时 {minutes} 分钟"
+    if minutes:
+        return f"{minutes} 分钟"
+    return "不足 1 分钟"
+
+
 def wrapped_tick_elapsed_seconds(current_tick: int, last_input_tick: int) -> float:
     """Calculate a DWORD millisecond delta across the Windows tick wraparound."""
     return ((current_tick - last_input_tick) & 0xFFFFFFFF) / 1000.0

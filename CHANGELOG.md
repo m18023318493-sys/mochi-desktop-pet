@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented here.
 
+## 0.3.1 - 2026-09-16
+
+- Localized all pet messages, reminders, menus, and activity dialogs into Chinese.
+- Reserved a dedicated transparent area above the character so speech bubbles never cover it.
+- Added a larger 20-point blue hydration reminder while keeping normal messages compact.
+- Preserved the character's screen position while expanding the window upward.
+
 ## 0.3.0 - 2026-09-16
 
 - Added local custom appearances from PNG, JPEG, WebP, GIF, and BMP images.

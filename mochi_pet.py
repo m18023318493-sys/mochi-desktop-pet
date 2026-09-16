@@ -1,4 +1,4 @@
-"""Mochi Desktop Pet — a tiny, dependency-free Tkinter companion."""
+"""Mochi Desktop Pet — a tiny Tkinter companion."""
 
 from __future__ import annotations
 
@@ -27,14 +27,21 @@ from avatar_core import (
 
 from activity_core import (
     ActivityTracker,
-    format_duration,
+    format_duration_zh,
     load_activity,
     save_activity,
     wrapped_tick_elapsed_seconds,
 )
 
 from pet_core import (
+    AVATAR_BASE_Y,
     HYDRATION_INTERVAL_OPTIONS,
+    HYDRATION_BUBBLE_FONT_SIZE,
+    HYDRATION_BUBBLE_BOTTOM,
+    NORMAL_BUBBLE_FONT_SIZE,
+    NORMAL_BUBBLE_BOTTOM,
+    PET_Y_OFFSET,
+    WALKING_BOB_AMPLITUDE,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
     VERSION,
@@ -45,13 +52,16 @@ from pet_core import (
     monitor_for_point,
     normalize_position_on_monitors,
     save_settings,
+    saved_y_from_window,
     settings_path,
+    window_y_from_saved,
 )
 
 
 APP_NAME = "Mochi Desktop Pet"
 CHROMA_KEY = "#010203"
 FALLBACK_BACKGROUND = "#fff7ed"
+HYDRATION_REMINDER_TEXT = "喝水时间到！\n请喝一杯水"
 
 
 def windows_idle_seconds() -> float | None:
@@ -145,17 +155,17 @@ class MochiPet:
     """The borderless pet window and its animation loop."""
 
     messages = (
-        "Need a tiny break?",
-        "You're doing great!",
-        "Mochi believes in you.",
-        "Time to stretch?",
-        "Hello from your desktop!",
+        "休息一下吧？",
+        "你做得很棒！",
+        "麻薯一直陪着你。",
+        "该伸个懒腰啦！",
+        "今天也要开心呀！",
     )
     happy_messages = (
-        "Purr... thank you!",
-        "That tickles!",
-        "Best human ever!",
-        "Mochi is happy!",
+        "好舒服呀～",
+        "谢谢你摸摸我！",
+        "最喜欢你啦！",
+        "麻薯很开心！",
     )
 
     def __init__(
@@ -188,7 +198,7 @@ class MochiPet:
         self.work_areas = monitor_work_areas(root)
         x, y = normalize_position_on_monitors(
             self.settings["x"],
-            self.settings["y"],
+            window_y_from_saved(self.settings["y"]),
             self.work_areas,
         )
 
@@ -240,44 +250,44 @@ class MochiPet:
         self.canvas.pack(fill="both", expand=True)
 
         self.menu = tk.Menu(root, tearoff=False)
-        self.menu.add_command(label="I drank water", command=self._log_water)
-        self.menu.add_command(label="Today's activity", command=self._show_today_stats)
+        self.menu.add_command(label="我喝水了", command=self._log_water)
+        self.menu.add_command(label="今日活动", command=self._show_today_stats)
         self.menu.add_separator()
         self.menu.add_checkbutton(
-            label="Track active / idle time",
+            label="记录活跃 / 空闲时间",
             variable=self.activity_monitoring,
             command=self._toggle_activity_monitoring,
         )
         self.menu.add_checkbutton(
-            label="Hydration reminders",
+            label="喝水提醒",
             variable=self.hydration_reminders,
             command=self._toggle_hydration_reminders,
         )
         interval_menu = tk.Menu(self.menu, tearoff=False)
         for minutes in HYDRATION_INTERVAL_OPTIONS:
             interval_menu.add_radiobutton(
-                label=f"Every {minutes} minutes",
+                label=f"每 {minutes} 分钟",
                 variable=self.hydration_interval,
                 value=minutes,
                 command=self._set_hydration_interval,
             )
-        self.menu.add_cascade(label="Reminder interval", menu=interval_menu)
+        self.menu.add_cascade(label="提醒间隔", menu=interval_menu)
         self.menu.add_command(
-            label="Delete activity history...",
+            label="删除活动记录...",
             command=self._delete_activity_history,
         )
         self.menu.add_separator()
         appearance_menu = tk.Menu(self.menu, tearoff=False)
         appearance_menu.add_command(
-            label="Choose custom image...",
+            label="选择自定义图片...",
             command=self._choose_custom_avatar,
         )
         appearance_menu.add_command(
-            label="Use saved custom image",
+            label="使用已保存的图片",
             command=self._use_saved_custom_avatar,
         )
         appearance_menu.add_command(
-            label="Use Mochi",
+            label="使用麻薯形象",
             command=self._use_mochi_avatar,
         )
         size_menu = tk.Menu(appearance_menu, tearoff=False)
@@ -288,27 +298,27 @@ class MochiPet:
                 value=percent,
                 command=self._set_avatar_scale,
             )
-        appearance_menu.add_cascade(label="Custom image size", menu=size_menu)
+        appearance_menu.add_cascade(label="自定义图片大小", menu=size_menu)
         appearance_menu.add_separator()
         appearance_menu.add_command(
-            label="Remove saved custom image...",
+            label="删除已保存的图片...",
             command=self._remove_custom_avatar,
         )
-        self.menu.add_cascade(label="Appearance", menu=appearance_menu)
+        self.menu.add_cascade(label="外观", menu=appearance_menu)
         self.menu.add_separator()
         self.menu.add_checkbutton(
-            label="Auto-wander",
+            label="自动走动",
             variable=self.auto_wander,
             command=self._toggle_wander,
         )
         self.menu.add_checkbutton(
-            label="Always on top",
+            label="始终置顶",
             variable=self.always_on_top,
             command=self._toggle_topmost,
         )
-        self.menu.add_command(label="Reset position", command=self._reset_position)
+        self.menu.add_command(label="重置位置", command=self._reset_position)
         self.menu.add_separator()
-        self.menu.add_command(label="Quit Mochi", command=self.close)
+        self.menu.add_command(label="退出麻薯", command=self.close)
 
         self.dragging = False
         self.closing = False
@@ -322,7 +332,8 @@ class MochiPet:
         self.next_blink_at = now + self.rng.uniform(2.0, 4.0)
         self.blink_until = 0.0
         self.happy_until = 0.0
-        self.message = "Hi! I'm Mochi."
+        self.message = "你好！我是麻薯。"
+        self.message_emphasis = False
         self.message_until = now + 3.5
         self.next_message_at = now + self.rng.uniform(18.0, 30.0)
         self.hearts: list[tuple[float, float, float]] = []
@@ -337,7 +348,7 @@ class MochiPet:
                 self._load_custom_avatar()
             except AvatarImageError:
                 self.appearance_mode.set("mochi")
-                self.message = "Custom image unavailable; using Mochi."
+                self.message = "自定义图片不可用，已恢复麻薯形象。"
                 self.message_until = now + 5.0
 
         self.canvas.bind("<ButtonPress-1>", self._start_drag)
@@ -378,8 +389,7 @@ class MochiPet:
     def _interact(self, _event: tk.Event) -> None:
         now = time.monotonic()
         self.happy_until = now + 2.2
-        self.message = self.rng.choice(self.happy_messages)
-        self.message_until = now + 2.8
+        self._set_message(self.rng.choice(self.happy_messages), 2.8, now=now)
         self.next_message_at = now + self.rng.uniform(20.0, 35.0)
         for offset_x, delay in ((-19, 0.0), (2, 0.12), (22, 0.24)):
             self.hearts.append((88 + offset_x, 102.0, now + delay))
@@ -389,6 +399,19 @@ class MochiPet:
             self.menu.tk_popup(event.x_root, event.y_root)
         finally:
             self.menu.grab_release()
+
+    def _set_message(
+        self,
+        message: str,
+        duration: float,
+        *,
+        emphasized: bool = False,
+        now: float | None = None,
+    ) -> None:
+        shown_at = time.monotonic() if now is None else now
+        self.message = message
+        self.message_until = shown_at + duration
+        self.message_emphasis = emphasized
 
     def _load_custom_avatar(self) -> None:
         left, right = load_avatar_frames(self.avatar_path, self.avatar_scale.get())
@@ -401,7 +424,7 @@ class MochiPet:
         from tkinter import messagebox
 
         messagebox.showerror(
-            "Mochi - Custom appearance",
+            "麻薯 - 自定义外观",
             str(error),
             parent=self.root,
         )
@@ -411,10 +434,10 @@ class MochiPet:
 
         selected = filedialog.askopenfilename(
             parent=self.root,
-            title="Choose a full-body image",
+            title="选择人物全身图片",
             filetypes=(
-                ("Image files", "*.png *.jpg *.jpeg *.webp *.gif *.bmp"),
-                ("All files", "*.*"),
+                ("图片文件", "*.png *.jpg *.jpeg *.webp *.gif *.bmp"),
+                ("所有文件", "*.*"),
             ),
         )
         if not selected:
@@ -426,8 +449,7 @@ class MochiPet:
             self._show_avatar_error(error)
             return
         self.appearance_mode.set("custom")
-        self.message = "Custom look ready!"
-        self.message_until = time.monotonic() + 4.0
+        self._set_message("自定义形象已启用！", 4.0)
         self._persist()
 
     def _use_saved_custom_avatar(self) -> None:
@@ -437,14 +459,12 @@ class MochiPet:
             self._show_avatar_error(error)
             return
         self.appearance_mode.set("custom")
-        self.message = "Custom look restored."
-        self.message_until = time.monotonic() + 3.5
+        self._set_message("已恢复自定义形象。", 3.5)
         self._persist()
 
     def _use_mochi_avatar(self) -> None:
         self.appearance_mode.set("mochi")
-        self.message = "Mochi is back!"
-        self.message_until = time.monotonic() + 3.5
+        self._set_message("麻薯回来啦！", 3.5)
         self._persist()
 
     def _set_avatar_scale(self) -> None:
@@ -461,12 +481,12 @@ class MochiPet:
 
         if not self.avatar_path.exists():
             self._use_mochi_avatar()
-            self.message = "No saved custom image."
+            self._set_message("没有已保存的自定义图片。", 3.5)
             return
         confirmed = messagebox.askyesno(
-            "Remove custom image?",
-            "Delete Mochi's processed local copy of the custom image?\n\n"
-            "Your original image will not be changed.",
+            "删除自定义图片？",
+            "是否删除麻薯保存在本机的自定义图片副本？\n\n"
+            "你的原始图片不会被修改。",
             parent=self.root,
         )
         if not confirmed:
@@ -475,25 +495,22 @@ class MochiPet:
             self.avatar_path.unlink()
         except OSError as error:
             self._show_avatar_error(
-                AvatarImageError("Mochi could not remove the saved custom image.")
+                AvatarImageError("无法删除已保存的自定义图片。")
             )
             return
         self.custom_avatar_frames.clear()
         self.appearance_mode.set("mochi")
-        self.message = "Saved custom image removed."
-        self.message_until = time.monotonic() + 4.0
+        self._set_message("已删除自定义图片。", 4.0)
         self._persist()
 
     def _toggle_activity_monitoring(self) -> None:
         state = self.activity_monitoring.get()
-        self.message = "Activity totals on." if state else "Activity totals paused."
-        self.message_until = time.monotonic() + 3.0
+        self._set_message("活动统计已开启。" if state else "活动统计已暂停。", 3.0)
         self._persist()
 
     def _toggle_hydration_reminders(self) -> None:
         state = self.hydration_reminders.get()
-        self.message = "Water reminders on." if state else "Water reminders paused."
-        self.message_until = time.monotonic() + 3.0
+        self._set_message("喝水提醒已开启。" if state else "喝水提醒已暂停。", 3.0)
         self._persist()
 
     def _set_hydration_interval(self) -> None:
@@ -506,16 +523,18 @@ class MochiPet:
         )
         self.activity_tracker.today.hydration_elapsed_seconds = 0.0
         self.activity_tracker.today.snooze_remaining_seconds = 0.0
-        self.message = f"Water reminder: {self.hydration_interval.get()} min."
-        self.message_until = time.monotonic() + 3.2
+        self._set_message(f"喝水提醒：每 {self.hydration_interval.get()} 分钟。", 3.2)
         self._persist()
         self._save_activity()
 
     def _log_water(self) -> None:
         now = time.monotonic()
         self.activity_tracker.mark_water()
-        self.message = f"Nice! Water #{self.activity_tracker.today.water_count} today."
-        self.message_until = now + 4.5
+        self._set_message(
+            f"真棒！今天已喝水 {self.activity_tracker.today.water_count} 次。",
+            4.5,
+            now=now,
+        )
         self.happy_until = now + 2.5
         self.water_effect_started = now
         self.water_effect_until = now + 2.6
@@ -532,18 +551,18 @@ class MochiPet:
             today=datetime.now().astimezone(),
         )
         stats = self.activity_tracker.today
-        tracking = "On" if self.activity_monitoring.get() else "Paused"
+        tracking = "开启" if self.activity_monitoring.get() else "暂停"
         messagebox.showinfo(
-            "Mochi - Today's activity",
+            "麻薯 - 今日活动",
             "\n".join(
                 (
-                    f"Activity totals: {tracking}",
-                    f"Active time: {format_duration(stats.active_seconds)}",
-                    f"Idle time: {format_duration(stats.idle_seconds)}",
-                    f"Water logged: {stats.water_count}",
+                    f"活动统计：{tracking}",
+                    f"活跃时间：{format_duration_zh(stats.active_seconds)}",
+                    f"空闲时间：{format_duration_zh(stats.idle_seconds)}",
+                    f"今日喝水：{stats.water_count} 次",
                     "",
-                    "Only daily totals are stored locally.",
-                    "No input content, apps, titles, or screenshots are logged.",
+                    "仅在本机保存每日汇总数据。",
+                    "不会记录输入内容、应用、窗口标题或截图。",
                 )
             ),
             parent=self.root,
@@ -553,17 +572,16 @@ class MochiPet:
         from tkinter import messagebox
 
         confirmed = messagebox.askyesno(
-            "Delete activity history?",
-            "Delete all locally stored activity totals and water counts?\n\n"
-            "This cannot be undone.",
+            "删除活动记录？",
+            "是否删除本机保存的全部活动汇总和喝水次数？\n\n"
+            "此操作无法撤销。",
             parent=self.root,
         )
         if not confirmed:
             return
         self.activity_tracker.clear_history(today=datetime.now().astimezone())
         self._save_activity()
-        self.message = "Local activity history deleted."
-        self.message_until = time.monotonic() + 4.0
+        self._set_message("本地活动记录已删除。", 4.0)
 
     def _save_activity(self) -> None:
         try:
@@ -573,8 +591,12 @@ class MochiPet:
 
     def _show_hydration_reminder(self, now: float) -> None:
         self.activity_tracker.mark_reminded()
-        self.message = "Water break! Take a sip."
-        self.message_until = now + 12.0
+        self._set_message(
+            HYDRATION_REMINDER_TEXT,
+            12.0,
+            emphasized=True,
+            now=now,
+        )
         self.water_effect_started = now
         self.water_effect_until = now + 4.0
         self._save_activity()
@@ -634,12 +656,12 @@ class MochiPet:
         self.root.geometry(geometry_at(x, y))
         self.walk_target_x = None
         self.settings["x"] = x
-        self.settings["y"] = y
+        self.settings["y"] = saved_y_from_window(y)
         self._persist()
 
     def _remember_position(self) -> None:
         self.settings["x"] = self.root.winfo_x()
-        self.settings["y"] = self.root.winfo_y()
+        self.settings["y"] = saved_y_from_window(self.root.winfo_y())
         self._persist()
 
     def _persist(self) -> None:
@@ -667,7 +689,7 @@ class MochiPet:
                 pass
             self.after_id = None
         self.settings["x"] = self.root.winfo_x()
-        self.settings["y"] = self.root.winfo_y()
+        self.settings["y"] = saved_y_from_window(self.root.winfo_y())
         self._persist()
         self._save_activity()
         self.root.destroy()
@@ -752,9 +774,9 @@ class MochiPet:
 
         if self.message and now >= self.message_until:
             self.message = ""
+            self.message_emphasis = False
         if not self.message and now >= self.next_message_at:
-            self.message = self.rng.choice(self.messages)
-            self.message_until = now + 3.2
+            self._set_message(self.rng.choice(self.messages), 3.2, now=now)
             self.next_message_at = now + self.rng.uniform(22.0, 42.0)
 
         self.hearts = [heart for heart in self.hearts if now - heart[2] < 1.55]
@@ -766,7 +788,9 @@ class MochiPet:
         canvas = self.canvas
         canvas.delete("all")
         center_x = WINDOW_WIDTH / 2
-        bob = math.sin(now * (9.0 if walking else 3.2)) * (2.4 if walking else 1.2)
+        bob = math.sin(now * (9.0 if walking else 3.2)) * (
+            WALKING_BOB_AMPLITUDE if walking else 1.2
+        )
         happy = now < self.happy_until
         blinking = now < self.blink_until
 
@@ -780,22 +804,45 @@ class MochiPet:
 
         def oval(x1: float, y1: float, x2: float, y2: float, **kwargs: Any) -> int:
             left, right = sorted((mirror_x(x1), mirror_x(x2)))
-            return canvas.create_oval(left, y1 + bob, right, y2 + bob, **kwargs)
+            return canvas.create_oval(
+                left,
+                y1 + PET_Y_OFFSET + bob,
+                right,
+                y2 + PET_Y_OFFSET + bob,
+                **kwargs,
+            )
 
         def line(points: list[float], **kwargs: Any) -> int:
             mirrored: list[float] = []
             for index in range(0, len(points), 2):
-                mirrored.extend((mirror_x(points[index]), points[index + 1] + bob))
+                mirrored.extend(
+                    (
+                        mirror_x(points[index]),
+                        points[index + 1] + PET_Y_OFFSET + bob,
+                    )
+                )
             return canvas.create_line(*mirrored, **kwargs)
 
         def polygon(points: list[float], **kwargs: Any) -> int:
             mirrored: list[float] = []
             for index in range(0, len(points), 2):
-                mirrored.extend((mirror_x(points[index]), points[index + 1] + bob))
+                mirrored.extend(
+                    (
+                        mirror_x(points[index]),
+                        points[index + 1] + PET_Y_OFFSET + bob,
+                    )
+                )
             return canvas.create_polygon(*mirrored, **kwargs)
 
         # Soft floor shadow.
-        canvas.create_oval(42, 181, 136, 198, fill="#cbd5e1", outline="")
+        canvas.create_oval(
+            42,
+            181 + PET_Y_OFFSET,
+            136,
+            198 + PET_Y_OFFSET,
+            fill="#cbd5e1",
+            outline="",
+        )
 
         # Tail sits behind the body and swishes independently.
         tail_lift = math.sin(now * 4.2) * 8
@@ -868,18 +915,20 @@ class MochiPet:
         shadow_half_width = max(18, min(58, frame.width() * 0.36))
         self.canvas.create_oval(
             center_x - shadow_half_width,
-            184,
+            184 + PET_Y_OFFSET,
             center_x + shadow_half_width,
-            199,
+            199 + PET_Y_OFFSET,
             fill="#cbd5e1",
             outline="",
+            tags=("pet-shadow",),
         )
         stride = math.sin(now * 9.0) * 1.5 if walking else 0.0
         self.canvas.create_image(
             center_x + stride,
-            196 + bob,
+            AVATAR_BASE_Y + bob,
             image=frame,
             anchor=tk.S,
+            tags=("pet-avatar",),
         )
 
     def _draw_effects(self, now: float) -> None:
@@ -889,7 +938,7 @@ class MochiPet:
             if 0.0 <= age <= 1.55:
                 self.canvas.create_text(
                     heart_x,
-                    heart_y - age * 34,
+                    heart_y + PET_Y_OFFSET - age * 34,
                     text="♥",
                     fill="#ef476f",
                     font=("Segoe UI Symbol", max(8, int(18 - age * 4)), "bold"),
@@ -900,7 +949,7 @@ class MochiPet:
             effect_age = max(0.0, now - self.water_effect_started)
             for index, base_x in enumerate((56, 88, 120)):
                 phase = max(0.0, effect_age - index * 0.16)
-                drop_y = 104 - phase * 25
+                drop_y = 104 + PET_Y_OFFSET - phase * 25
                 size = max(3.0, 7.0 - phase)
                 self.canvas.create_polygon(
                     base_x,
@@ -924,29 +973,53 @@ class MochiPet:
                 )
 
         if self.message:
-            self._draw_bubble(self.message)
+            self._draw_bubble(self.message, emphasized=self.message_emphasis)
 
-    def _draw_bubble(self, message: str) -> None:
-        points = [
-            13, 10, 163, 10, 168, 15, 168, 57, 163, 62,
-            101, 62, 88, 72, 82, 62, 13, 62, 8, 57, 8, 15,
-        ]
+    def _draw_bubble(self, message: str, *, emphasized: bool = False) -> None:
+        if emphasized:
+            points = [
+                7, 4, 169, 4, 173, 8, 173, 78, 169, 82,
+                103, 82, 88, HYDRATION_BUBBLE_BOTTOM, 77, 82,
+                7, 82, 3, 78, 3, 8,
+            ]
+            fill = "#eff6ff"
+            outline = "#0284c7"
+            text_fill = "#075985"
+            font_size = HYDRATION_BUBBLE_FONT_SIZE
+            text_y = 42
+            text_width = 158
+            border_width = 3
+        else:
+            points = [
+                13, 10, 163, 10, 168, 15, 168, 57, 163, 62,
+                101, 62, 88, NORMAL_BUBBLE_BOTTOM, 82, 62,
+                13, 62, 8, 57, 8, 15,
+            ]
+            fill = "#ffffff"
+            outline = "#8f5535"
+            text_fill = "#4b342c"
+            font_size = NORMAL_BUBBLE_FONT_SIZE
+            text_y = 36
+            text_width = 142
+            border_width = 2
         self.canvas.create_polygon(
             *points,
-            fill="#ffffff",
-            outline="#8f5535",
-            width=2,
+            fill=fill,
+            outline=outline,
+            width=border_width,
             smooth=True,
             splinesteps=18,
+            tags=("message-bubble", "message-bubble-body"),
         )
         self.canvas.create_text(
             88,
-            36,
+            text_y,
             text=message,
-            fill="#4b342c",
-            font=("Segoe UI", 9, "bold"),
-            width=142,
+            fill=text_fill,
+            font=("Microsoft YaHei UI", font_size, "bold"),
+            width=text_width,
             justify="center",
+            tags=("message-bubble", "message-bubble-text"),
         )
 
 
@@ -1021,9 +1094,9 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from tkinter import messagebox
 
-            messagebox.showerror(APP_NAME, f"Mochi could not start:\n\n{error}")
+            messagebox.showerror(APP_NAME, f"麻薯无法启动：\n\n{error}")
         except (tk.TclError, ImportError):
-            print(f"Mochi could not start: {error}")
+            print(f"麻薯无法启动：{error}")
         try:
             root.destroy()
         except tk.TclError:

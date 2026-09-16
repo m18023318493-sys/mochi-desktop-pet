@@ -27,8 +27,8 @@
 
   <g transform="translate(370 32)" filter="url(#shadow)">
     <path d="M20 10 H310 Q326 10 326 26 V100 Q326 116 310 116 H186 L166 140 L151 116 H20 Q4 116 4 100 V26 Q4 10 20 10Z" fill="#fff" stroke="#8f5535" stroke-width="5"/>
-    <text x="165" y="61" text-anchor="middle" fill="#4b342c" font-family="Segoe UI, sans-serif" font-size="25" font-weight="700">Water break! Take a sip.</text>
-    <text x="165" y="91" text-anchor="middle" fill="#8f5535" font-family="Segoe UI, sans-serif" font-size="16">local reminders • private daily totals</text>
+    <text x="165" y="64" text-anchor="middle" fill="#075985" font-family="Microsoft YaHei UI, Segoe UI, sans-serif" font-size="31" font-weight="700">喝水时间到！</text>
+    <text x="165" y="94" text-anchor="middle" fill="#0284c7" font-family="Microsoft YaHei UI, Segoe UI, sans-serif" font-size="16">中文提醒 • 本地隐私数据</text>
   </g>
 
   <g transform="translate(480 170)" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)">
@@ -60,5 +60,5 @@
     <text x="676" y="145" font-size="18">♥</text>
   </g>
   <text x="42" y="54" fill="#334155" font-family="Segoe UI, sans-serif" font-size="25" font-weight="700">Mochi Desktop Pet</text>
-  <text x="42" y="84" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="17">tiny • offline • dependency-free</text>
+  <text x="42" y="84" fill="#64748b" font-family="Segoe UI, sans-serif" font-size="17">customizable • local-first • private</text>
 </svg>

@@ -4,7 +4,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from avatar_core import AVATAR_MAX_HEIGHT
 from pet_core import (
+    AVATAR_BASE_Y,
+    HYDRATION_BUBBLE_BOTTOM,
+    HYDRATION_BUBBLE_FONT_SIZE,
+    NORMAL_BUBBLE_FONT_SIZE,
+    PET_Y_OFFSET,
+    WALKING_BOB_AMPLITUDE,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
     VERSION,
@@ -17,10 +24,32 @@ from pet_core import (
     normalize_position,
     normalize_position_on_monitors,
     save_settings,
+    saved_y_from_window,
+    window_y_from_saved,
 )
 
 
 class PetCoreTests(unittest.TestCase):
+    def test_bubbles_clear_maximum_custom_avatar(self):
+        highest_avatar_pixel = (
+            AVATAR_BASE_Y - AVATAR_MAX_HEIGHT - WALKING_BOB_AMPLITUDE
+        )
+        self.assertGreaterEqual(highest_avatar_pixel - HYDRATION_BUBBLE_BOTTOM, 16)
+        self.assertGreater(HYDRATION_BUBBLE_FONT_SIZE, NORMAL_BUBBLE_FONT_SIZE * 1.5)
+
+    def test_saved_stage_y_round_trips_across_taller_layout(self):
+        self.assertIsNone(window_y_from_saved(None))
+        self.assertEqual(window_y_from_saved(800), 800 - PET_Y_OFFSET)
+        self.assertEqual(saved_y_from_window(window_y_from_saved(800)), 800)
+
+    def test_old_bottom_position_keeps_stage_in_place(self):
+        old_window_height = 206
+        work_area = (0, 0, 1920, 1040)
+        old_root_y = work_area[3] - old_window_height
+        new_root_y = window_y_from_saved(old_root_y)
+        _x, normalized_y = normalize_position_on_monitors(100, new_root_y, [work_area])
+        self.assertEqual(normalized_y + PET_Y_OFFSET, old_root_y)
+
     def test_clamp_keeps_values_inside_range(self):
         self.assertEqual(clamp(-4, 0, 10), 0)
         self.assertEqual(clamp(7, 0, 10), 7)

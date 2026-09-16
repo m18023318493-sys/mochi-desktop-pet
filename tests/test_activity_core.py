@@ -10,6 +10,7 @@ from activity_core import (
     RETENTION_DAYS,
     ActivityTracker,
     DailyActivity,
+    format_duration_zh,
     is_quiet_hour,
     load_activity,
     save_activity,
@@ -21,6 +22,11 @@ TODAY = date(2026, 9, 16)
 
 
 class ActivityCoreTests(unittest.TestCase):
+    def test_chinese_duration_format(self):
+        self.assertEqual(format_duration_zh(20), "不足 1 分钟")
+        self.assertEqual(format_duration_zh(120), "2 分钟")
+        self.assertEqual(format_duration_zh(3720), "1 小时 2 分钟")
+
     def test_samples_are_aggregated_and_sleep_gaps_are_capped(self):
         tracker = ActivityTracker(today=TODAY)
         tracker.record_sample(
