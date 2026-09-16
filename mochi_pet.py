@@ -912,16 +912,6 @@ class MochiPet:
         if frame is None:
             return
         center_x = WINDOW_WIDTH / 2
-        shadow_half_width = max(18, min(58, frame.width() * 0.36))
-        self.canvas.create_oval(
-            center_x - shadow_half_width,
-            184 + PET_Y_OFFSET,
-            center_x + shadow_half_width,
-            199 + PET_Y_OFFSET,
-            fill="#cbd5e1",
-            outline="",
-            tags=("pet-shadow",),
-        )
         stride = math.sin(now * 9.0) * 1.5 if walking else 0.0
         self.canvas.create_image(
             center_x + stride,

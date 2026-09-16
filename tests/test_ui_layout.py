@@ -16,6 +16,30 @@ from pet_core import (
 
 
 class UiLayoutTests(unittest.TestCase):
+    def test_custom_avatar_draws_no_floor_shadow_without_a_display(self):
+        class FakeFrame:
+            def width(self):
+                return 100
+
+        class FakeCanvas:
+            def __init__(self):
+                self.image_calls = []
+
+            def create_image(self, *args, **kwargs):
+                self.image_calls.append((args, kwargs))
+
+            def create_oval(self, *args, **kwargs):
+                raise AssertionError("custom avatars must not draw a floor shadow")
+
+        pet = object.__new__(MochiPet)
+        pet.direction = -1
+        pet.custom_avatar_frames = {-1: FakeFrame()}
+        pet.canvas = FakeCanvas()
+
+        pet._draw_custom_avatar(now=0.0, walking=False, bob=0.0)
+
+        self.assertEqual(len(pet.canvas.image_calls), 1)
+
     def test_bubbles_stay_above_maximum_custom_avatar(self):
         try:
             root = tk.Tk()
@@ -71,6 +95,7 @@ class UiLayoutTests(unittest.TestCase):
                     avatar = pet.canvas.bbox("pet-avatar")
                     self.assertIsNotNone(bubble)
                     self.assertIsNotNone(avatar)
+                    self.assertFalse(pet.canvas.find_withtag("pet-shadow"))
                     self.assertLess(
                         bubble[3],
                         avatar[1],

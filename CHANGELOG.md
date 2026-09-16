@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented here.
 
+## 0.3.2 - 2026-09-17
+
+- Removed the floor shadow beneath custom images so no horizontal afterimage appears below the character.
+
 ## 0.3.1 - 2026-09-16
 
 - Localized all pet messages, reminders, menus, and activity dialogs into Chinese.

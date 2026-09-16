@@ -14,6 +14,7 @@ A tiny customizable companion that lives on your desktop. Keep the built-in anim
 - Gentle idle animation, blinking, tail swishes, and automatic wandering
 - Import a PNG, JPEG, WebP, GIF, or BMP as the desktop character
 - Automatic left/right mirroring, walking bob, and four image-size options
+- Custom images render cleanly without an artificial floor shadow
 - Switch back to Mochi without deleting the saved custom image
 - Chinese pet messages, menus, reminder text, and activity dialogs
 - Speech bubbles stay above the character instead of covering its head
@@ -32,7 +33,7 @@ A tiny customizable companion that lives on your desktop. Keep the built-in anim
 
 Requires Python 3.10 or newer with Tkinter (included in the standard Windows installer) and Pillow for safe image import.
 
-For the easiest Windows setup, download `mochi-desktop-pet-v0.3.1.zip` from the [latest release](https://github.com/m18023318493-sys/mochi-desktop-pet/releases/latest), extract the whole ZIP, then double-click `start_mochi.bat`. On first launch, the script installs Pillow if it is not already available; this one-time dependency install needs internet access. Mochi itself does not use the network.
+For the easiest Windows setup, download `mochi-desktop-pet-v0.3.2.zip` from the [latest release](https://github.com/m18023318493-sys/mochi-desktop-pet/releases/latest), extract the whole ZIP, then double-click `start_mochi.bat`. On first launch, the script installs Pillow if it is not already available; this one-time dependency install needs internet access. Mochi itself does not use the network.
 
 Or run it from source:
 

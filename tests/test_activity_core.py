@@ -1,7 +1,7 @@
 import json
 import tempfile
 import unittest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from activity_core import (
@@ -19,6 +19,7 @@ from activity_core import (
 
 
 TODAY = date(2026, 9, 16)
+TODAY_MORNING = datetime(2026, 9, 16, 9, 0)
 
 
 class ActivityCoreTests(unittest.TestCase):
@@ -78,7 +79,7 @@ class ActivityCoreTests(unittest.TestCase):
         )
         self.assertTrue(tracker.hydration_due(60, hour=9, user_is_idle=False))
 
-        tracker.mark_reminded()
+        tracker.mark_reminded(now=TODAY_MORNING)
         self.assertFalse(tracker.hydration_due(60, hour=9, user_is_idle=False))
         for _ in range(120):
             tracker.record_sample(
@@ -89,7 +90,7 @@ class ActivityCoreTests(unittest.TestCase):
             )
         self.assertTrue(tracker.hydration_due(60, hour=9, user_is_idle=False))
 
-        tracker.mark_water()
+        tracker.mark_water(now=TODAY_MORNING)
         self.assertEqual(tracker.today.water_count, 1)
         self.assertEqual(tracker.today.hydration_elapsed_seconds, 0)
         self.assertFalse(tracker.hydration_due(60, hour=9, user_is_idle=False))
