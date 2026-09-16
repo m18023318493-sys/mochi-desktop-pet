@@ -88,9 +88,27 @@ class PetCoreTests(unittest.TestCase):
             path.write_text(json.dumps(raw), encoding="utf-8")
             loaded = load_settings(path)
 
-            self.assertEqual(loaded, expected)
+            for key, value in expected.items():
+                self.assertEqual(loaded[key], value)
             self.assertNotIn("token", loaded)
+            self.assertFalse(loaded["activity_monitoring"])
+            self.assertTrue(loaded["hydration_reminders"])
             self.assertFalse(path.with_suffix(".tmp").exists())
+
+    def test_legacy_settings_keep_preferences_and_do_not_opt_in_to_tracking(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text(
+                '{"x": 120, "y": 240, "auto_wander": false, "always_on_top": false}',
+                encoding="utf-8",
+            )
+            loaded = load_settings(path)
+        self.assertEqual((loaded["x"], loaded["y"]), (120, 240))
+        self.assertFalse(loaded["auto_wander"])
+        self.assertFalse(loaded["always_on_top"])
+        self.assertFalse(loaded["activity_monitoring"])
+        self.assertTrue(loaded["hydration_reminders"])
+        self.assertEqual(loaded["hydration_interval_minutes"], 60)
 
     def test_wander_target_stays_visible_and_moves(self):
         rng = random.Random(9)

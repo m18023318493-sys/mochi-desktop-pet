@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented here.
 
+## 0.2.0 - 2026-09-16
+
+- Added configurable hydration reminders with quiet hours from 22:00 to 08:00.
+- Added an opt-in, Windows-only active/idle time monitor using daily aggregates.
+- Added water logging, today's summary, 30-day retention, and local history deletion.
+- Added strict privacy-allowlist tests; no raw input, app, window, or screenshot data is stored.
+
 ## 0.1.1 - 2026-09-16
 
 - Fixed the Windows launcher when system utilities such as `where.exe` are not on `PATH`.

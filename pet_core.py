@@ -11,7 +11,8 @@ from typing import Any
 
 WINDOW_WIDTH = 176
 WINDOW_HEIGHT = 206
-VERSION = "0.1.1"
+VERSION = "0.2.0"
+HYDRATION_INTERVAL_OPTIONS = (30, 45, 60, 90, 120)
 WorkArea = tuple[int, int, int, int]
 
 DEFAULT_SETTINGS: dict[str, Any] = {
@@ -19,6 +20,10 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "y": None,
     "auto_wander": True,
     "always_on_top": True,
+    "activity_monitoring": False,
+    "hydration_reminders": True,
+    "hydration_interval_minutes": 60,
+    "idle_threshold_minutes": 5,
 }
 
 
@@ -132,6 +137,16 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
         result["auto_wander"] = data["auto_wander"]
     if isinstance(data.get("always_on_top"), bool):
         result["always_on_top"] = data["always_on_top"]
+    if isinstance(data.get("activity_monitoring"), bool):
+        result["activity_monitoring"] = data["activity_monitoring"]
+    if isinstance(data.get("hydration_reminders"), bool):
+        result["hydration_reminders"] = data["hydration_reminders"]
+    if data.get("hydration_interval_minutes") in HYDRATION_INTERVAL_OPTIONS:
+        result["hydration_interval_minutes"] = data["hydration_interval_minutes"]
+    if type(data.get("idle_threshold_minutes")) is int:
+        result["idle_threshold_minutes"] = int(
+            clamp(data["idle_threshold_minutes"], 1, 60)
+        )
     return result
 
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mochi-desktop-pet"
-version = "0.1.1"
+version = "0.2.0"
 description = "A tiny, privacy-friendly desktop cat drawn with Python and Tkinter."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,4 +29,4 @@ Issues = "https://github.com/m18023318493-sys/mochi-desktop-pet/issues"
 mochi-pet = "mochi_pet:main"
 
 [tool.setuptools]
-py-modules = ["mochi_pet", "pet_core"]
+py-modules = ["mochi_pet", "pet_core", "activity_core"]

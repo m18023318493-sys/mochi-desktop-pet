@@ -9,13 +9,23 @@ import os
 import platform
 import random
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from ctypes import wintypes
 
 import tkinter as tk
 
+from activity_core import (
+    ActivityTracker,
+    format_duration,
+    load_activity,
+    save_activity,
+    wrapped_tick_elapsed_seconds,
+)
+
 from pet_core import (
+    HYDRATION_INTERVAL_OPTIONS,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
     VERSION,
@@ -33,6 +43,32 @@ from pet_core import (
 APP_NAME = "Mochi Desktop Pet"
 CHROMA_KEY = "#010203"
 FALLBACK_BACKGROUND = "#fff7ed"
+
+
+def windows_idle_seconds() -> float | None:
+    """Read only the elapsed idle time; never install input hooks or read events."""
+    if os.name != "nt":
+        return None
+    try:
+        class LastInputInfo(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", wintypes.UINT),
+                ("dwTime", wintypes.DWORD),
+            ]
+
+        info = LastInputInfo()
+        info.cbSize = ctypes.sizeof(LastInputInfo)
+        get_last_input = ctypes.windll.user32.GetLastInputInfo
+        get_last_input.argtypes = [ctypes.POINTER(LastInputInfo)]
+        get_last_input.restype = wintypes.BOOL
+        get_tick_count = ctypes.windll.kernel32.GetTickCount
+        get_tick_count.argtypes = []
+        get_tick_count.restype = wintypes.DWORD
+        if not get_last_input(ctypes.byref(info)):
+            return None
+        return wrapped_tick_elapsed_seconds(get_tick_count(), info.dwTime)
+    except (AttributeError, OSError, TypeError, ValueError):
+        return None
 
 
 def monitor_work_areas(root: tk.Tk) -> list[tuple[int, int, int, int]]:
@@ -118,7 +154,10 @@ class MochiPet:
         root: tk.Tk,
         *,
         auto_wander_override: bool | None = None,
+        activity_monitoring_override: bool | None = None,
+        hydration_reminders_override: bool | None = None,
         config_path: Path | None = None,
+        activity_path: Path | None = None,
     ) -> None:
         self.root = root
         self.config_path = config_path
@@ -126,6 +165,14 @@ class MochiPet:
         self.settings = load_settings(config_path)
         if auto_wander_override is not None:
             self.settings["auto_wander"] = auto_wander_override
+        if activity_monitoring_override is not None:
+            self.settings["activity_monitoring"] = activity_monitoring_override
+        if hydration_reminders_override is not None:
+            self.settings["hydration_reminders"] = hydration_reminders_override
+        self.activity_path = activity_path or (config_path or settings_path()).with_name(
+            "activity.json"
+        )
+        self.activity_tracker: ActivityTracker = load_activity(self.activity_path)
 
         self.work_areas = monitor_work_areas(root)
         x, y = normalize_position_on_monitors(
@@ -157,6 +204,15 @@ class MochiPet:
 
         self.auto_wander = tk.BooleanVar(value=self.settings["auto_wander"])
         self.always_on_top = tk.BooleanVar(value=self.settings["always_on_top"])
+        self.activity_monitoring = tk.BooleanVar(
+            value=self.settings["activity_monitoring"]
+        )
+        self.hydration_reminders = tk.BooleanVar(
+            value=self.settings["hydration_reminders"]
+        )
+        self.hydration_interval = tk.IntVar(
+            value=self.settings["hydration_interval_minutes"]
+        )
         root.wm_attributes("-topmost", self.always_on_top.get())
 
         self.canvas = tk.Canvas(
@@ -171,6 +227,33 @@ class MochiPet:
         self.canvas.pack(fill="both", expand=True)
 
         self.menu = tk.Menu(root, tearoff=False)
+        self.menu.add_command(label="I drank water", command=self._log_water)
+        self.menu.add_command(label="Today's activity", command=self._show_today_stats)
+        self.menu.add_separator()
+        self.menu.add_checkbutton(
+            label="Track active / idle time",
+            variable=self.activity_monitoring,
+            command=self._toggle_activity_monitoring,
+        )
+        self.menu.add_checkbutton(
+            label="Hydration reminders",
+            variable=self.hydration_reminders,
+            command=self._toggle_hydration_reminders,
+        )
+        interval_menu = tk.Menu(self.menu, tearoff=False)
+        for minutes in HYDRATION_INTERVAL_OPTIONS:
+            interval_menu.add_radiobutton(
+                label=f"Every {minutes} minutes",
+                variable=self.hydration_interval,
+                value=minutes,
+                command=self._set_hydration_interval,
+            )
+        self.menu.add_cascade(label="Reminder interval", menu=interval_menu)
+        self.menu.add_command(
+            label="Delete activity history...",
+            command=self._delete_activity_history,
+        )
+        self.menu.add_separator()
         self.menu.add_checkbutton(
             label="Auto-wander",
             variable=self.auto_wander,
@@ -201,6 +284,11 @@ class MochiPet:
         self.message_until = now + 3.5
         self.next_message_at = now + self.rng.uniform(18.0, 30.0)
         self.hearts: list[tuple[float, float, float]] = []
+        self.water_effect_started = 0.0
+        self.water_effect_until = 0.0
+        self.last_activity_sample_at = now
+        self.next_activity_save_at = now + 60.0
+        self.user_is_idle = False
 
         self.canvas.bind("<ButtonPress-1>", self._start_drag)
         self.canvas.bind("<B1-Motion>", self._drag)
@@ -211,6 +299,8 @@ class MochiPet:
         root.bind("<Escape>", lambda _event: self.close())
         root.protocol("WM_DELETE_WINDOW", self.close)
 
+        if activity_monitoring_override is not None or hydration_reminders_override is not None:
+            self._persist()
         self._tick()
 
     def _start_drag(self, event: tk.Event) -> None:
@@ -250,6 +340,139 @@ class MochiPet:
         finally:
             self.menu.grab_release()
 
+    def _toggle_activity_monitoring(self) -> None:
+        state = self.activity_monitoring.get()
+        self.message = "Activity totals on." if state else "Activity totals paused."
+        self.message_until = time.monotonic() + 3.0
+        self._persist()
+
+    def _toggle_hydration_reminders(self) -> None:
+        state = self.hydration_reminders.get()
+        self.message = "Water reminders on." if state else "Water reminders paused."
+        self.message_until = time.monotonic() + 3.0
+        self._persist()
+
+    def _set_hydration_interval(self) -> None:
+        self.activity_tracker.record_sample(
+            0,
+            is_idle=self.user_is_idle,
+            count_activity=False,
+            count_hydration=False,
+            today=datetime.now().astimezone(),
+        )
+        self.activity_tracker.today.hydration_elapsed_seconds = 0.0
+        self.activity_tracker.today.snooze_remaining_seconds = 0.0
+        self.message = f"Water reminder: {self.hydration_interval.get()} min."
+        self.message_until = time.monotonic() + 3.2
+        self._persist()
+        self._save_activity()
+
+    def _log_water(self) -> None:
+        now = time.monotonic()
+        self.activity_tracker.mark_water()
+        self.message = f"Nice! Water #{self.activity_tracker.today.water_count} today."
+        self.message_until = now + 4.5
+        self.happy_until = now + 2.5
+        self.water_effect_started = now
+        self.water_effect_until = now + 2.6
+        self._save_activity()
+
+    def _show_today_stats(self) -> None:
+        from tkinter import messagebox
+
+        self.activity_tracker.record_sample(
+            0,
+            is_idle=self.user_is_idle,
+            count_activity=False,
+            count_hydration=False,
+            today=datetime.now().astimezone(),
+        )
+        stats = self.activity_tracker.today
+        tracking = "On" if self.activity_monitoring.get() else "Paused"
+        messagebox.showinfo(
+            "Mochi - Today's activity",
+            "\n".join(
+                (
+                    f"Activity totals: {tracking}",
+                    f"Active time: {format_duration(stats.active_seconds)}",
+                    f"Idle time: {format_duration(stats.idle_seconds)}",
+                    f"Water logged: {stats.water_count}",
+                    "",
+                    "Only daily totals are stored locally.",
+                    "No input content, apps, titles, or screenshots are logged.",
+                )
+            ),
+            parent=self.root,
+        )
+
+    def _delete_activity_history(self) -> None:
+        from tkinter import messagebox
+
+        confirmed = messagebox.askyesno(
+            "Delete activity history?",
+            "Delete all locally stored activity totals and water counts?\n\n"
+            "This cannot be undone.",
+            parent=self.root,
+        )
+        if not confirmed:
+            return
+        self.activity_tracker.clear_history(today=datetime.now().astimezone())
+        self._save_activity()
+        self.message = "Local activity history deleted."
+        self.message_until = time.monotonic() + 4.0
+
+    def _save_activity(self) -> None:
+        try:
+            save_activity(self.activity_tracker, self.activity_path)
+        except OSError:
+            pass
+
+    def _show_hydration_reminder(self, now: float) -> None:
+        self.activity_tracker.mark_reminded()
+        self.message = "Water break! Take a sip."
+        self.message_until = now + 12.0
+        self.water_effect_started = now
+        self.water_effect_until = now + 4.0
+        self._save_activity()
+        try:
+            self.root.lift()
+        except tk.TclError:
+            pass
+
+    def _update_activity(self, now: float) -> None:
+        elapsed = now - self.last_activity_sample_at
+        if elapsed < 1.0:
+            return
+        self.last_activity_sample_at = now
+
+        tracking = self.activity_monitoring.get()
+        reminders = self.hydration_reminders.get()
+        idle_value = windows_idle_seconds() if tracking else None
+        idle_known = idle_value is not None
+        threshold_seconds = self.settings["idle_threshold_minutes"] * 60
+        self.user_is_idle = bool(idle_known and idle_value >= threshold_seconds)
+
+        self.activity_tracker.record_sample(
+            elapsed,
+            is_idle=self.user_is_idle,
+            count_activity=tracking and idle_known,
+            count_hydration=reminders,
+            today=datetime.now().astimezone(),
+        )
+
+        wall_now = datetime.now().astimezone()
+        if reminders and self.activity_tracker.hydration_due(
+            self.hydration_interval.get(),
+            hour=wall_now.hour,
+            user_is_idle=self.user_is_idle,
+        ):
+            self._show_hydration_reminder(now)
+
+        if now >= self.next_activity_save_at:
+            if tracking or reminders:
+                self._save_activity()
+            self.next_activity_save_at = now + 60.0
+
     def _toggle_wander(self) -> None:
         if not self.auto_wander.get():
             self.walk_target_x = None
@@ -278,6 +501,9 @@ class MochiPet:
     def _persist(self) -> None:
         self.settings["auto_wander"] = self.auto_wander.get()
         self.settings["always_on_top"] = self.always_on_top.get()
+        self.settings["activity_monitoring"] = self.activity_monitoring.get()
+        self.settings["hydration_reminders"] = self.hydration_reminders.get()
+        self.settings["hydration_interval_minutes"] = self.hydration_interval.get()
         try:
             save_settings(self.settings, self.config_path)
         except OSError:
@@ -297,6 +523,7 @@ class MochiPet:
         self.settings["x"] = self.root.winfo_x()
         self.settings["y"] = self.root.winfo_y()
         self._persist()
+        self._save_activity()
         self.root.destroy()
 
     def _move_toward_target(self) -> bool:
@@ -350,6 +577,8 @@ class MochiPet:
 
     def _tick(self) -> None:
         now = time.monotonic()
+
+        self._update_activity(now)
 
         if now >= self.next_monitor_refresh_at:
             self._refresh_monitors()
@@ -490,6 +719,34 @@ class MochiPet:
                     font=("Segoe UI Symbol", max(8, int(18 - age * 4)), "bold"),
                 )
 
+        # Blue droplets make hydration reminders recognizable without sound.
+        if now < self.water_effect_until:
+            effect_age = max(0.0, now - self.water_effect_started)
+            for index, base_x in enumerate((56, 88, 120)):
+                phase = max(0.0, effect_age - index * 0.16)
+                drop_y = 104 - phase * 25
+                size = max(3.0, 7.0 - phase)
+                canvas.create_polygon(
+                    base_x,
+                    drop_y - size,
+                    base_x - size,
+                    drop_y + size,
+                    base_x + size,
+                    drop_y + size,
+                    fill="#38bdf8",
+                    outline="#0369a1",
+                    width=1,
+                )
+                canvas.create_oval(
+                    base_x - size,
+                    drop_y,
+                    base_x + size,
+                    drop_y + size * 2,
+                    fill="#38bdf8",
+                    outline="#0369a1",
+                    width=1,
+                )
+
         if self.message:
             self._draw_bubble(self.message)
 
@@ -530,7 +787,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--reset-settings",
         action="store_true",
-        help="remove the saved position and preferences before starting",
+        help="remove preferences but keep activity history before starting",
+    )
+    parser.add_argument(
+        "--reset-all-data",
+        action="store_true",
+        help="remove preferences and local aggregate activity history before starting",
+    )
+    parser.add_argument(
+        "--enable-activity",
+        action="store_true",
+        help="enable local active/idle aggregate statistics",
+    )
+    parser.add_argument(
+        "--no-hydration",
+        action="store_true",
+        help="start with hydration reminders disabled",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     return parser
@@ -539,11 +811,14 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     config = settings_path()
-    if args.reset_settings:
-        try:
-            config.unlink()
-        except OSError:
-            pass
+    activity_file = config.with_name("activity.json")
+    reset_targets = (config, activity_file) if args.reset_all_data else (config,)
+    if args.reset_settings or args.reset_all_data:
+        for target in reset_targets:
+            try:
+                target.unlink()
+            except OSError:
+                pass
 
     try:
         root = tk.Tk()
@@ -555,7 +830,10 @@ def main(argv: list[str] | None = None) -> int:
         MochiPet(
             root,
             auto_wander_override=False if args.no_wander else None,
+            activity_monitoring_override=True if args.enable_activity else None,
+            hydration_reminders_override=False if args.no_hydration else None,
             config_path=config,
+            activity_path=activity_file,
         )
         root.mainloop()
     except Exception as error:  # Keep pythonw failures visible to Windows users.

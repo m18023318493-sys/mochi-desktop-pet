@@ -30,6 +30,6 @@ jobs:
         if: runner.os == 'Windows'
         run: python -c "import tkinter; print('Tk', tkinter.TkVersion)"
       - run: python -m unittest discover -s tests -v
-      - run: python -m py_compile pet_core.py mochi_pet.py
+      - run: python -m py_compile activity_core.py pet_core.py mochi_pet.py
       - run: python -m pip install .
       - run: python -m mochi_pet --version
