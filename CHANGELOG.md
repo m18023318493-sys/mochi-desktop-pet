@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented here.
 
+## 0.3.0 - 2026-09-16
+
+- Added local custom appearances from PNG, JPEG, WebP, GIF, and BMP images.
+- Added automatic left/right mirroring, walking motion, and image-size controls.
+- Added safe local image normalization with EXIF removal, size limits, and atomic replacement.
+- Added controls to switch back to Mochi or delete the processed custom image.
+- Added custom-image privacy documentation and Pillow-based image tests.
+
 ## 0.2.0 - 2026-09-16
 
 - Added configurable hydration reminders with quiet hours from 22:00 to 08:00.

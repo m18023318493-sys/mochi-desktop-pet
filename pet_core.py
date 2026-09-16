@@ -11,7 +11,7 @@ from typing import Any
 
 WINDOW_WIDTH = 176
 WINDOW_HEIGHT = 206
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 HYDRATION_INTERVAL_OPTIONS = (30, 45, 60, 90, 120)
 WorkArea = tuple[int, int, int, int]
 
@@ -24,6 +24,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "hydration_reminders": True,
     "hydration_interval_minutes": 60,
     "idle_threshold_minutes": 5,
+    "appearance_mode": "mochi",
+    "avatar_scale_percent": 90,
 }
 
 
@@ -147,6 +149,10 @@ def load_settings(path: Path | None = None) -> dict[str, Any]:
         result["idle_threshold_minutes"] = int(
             clamp(data["idle_threshold_minutes"], 1, 60)
         )
+    if data.get("appearance_mode") in ("mochi", "custom"):
+        result["appearance_mode"] = data["appearance_mode"]
+    if data.get("avatar_scale_percent") in (60, 75, 90, 100):
+        result["avatar_scale_percent"] = data["avatar_scale_percent"]
     return result
 
 

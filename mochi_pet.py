@@ -15,6 +15,15 @@ from typing import Any
 from ctypes import wintypes
 
 import tkinter as tk
+from PIL import ImageTk
+
+from avatar_core import (
+    AVATAR_SCALE_OPTIONS,
+    AvatarImageError,
+    avatar_path_for_settings,
+    import_avatar,
+    load_avatar_frames,
+)
 
 from activity_core import (
     ActivityTracker,
@@ -163,6 +172,8 @@ class MochiPet:
         self.config_path = config_path
         self.rng = random.Random()
         self.settings = load_settings(config_path)
+        self.avatar_path = avatar_path_for_settings(config_path or settings_path())
+        self.custom_avatar_frames: dict[int, ImageTk.PhotoImage] = {}
         if auto_wander_override is not None:
             self.settings["auto_wander"] = auto_wander_override
         if activity_monitoring_override is not None:
@@ -213,6 +224,8 @@ class MochiPet:
         self.hydration_interval = tk.IntVar(
             value=self.settings["hydration_interval_minutes"]
         )
+        self.appearance_mode = tk.StringVar(value=self.settings["appearance_mode"])
+        self.avatar_scale = tk.IntVar(value=self.settings["avatar_scale_percent"])
         root.wm_attributes("-topmost", self.always_on_top.get())
 
         self.canvas = tk.Canvas(
@@ -254,6 +267,35 @@ class MochiPet:
             command=self._delete_activity_history,
         )
         self.menu.add_separator()
+        appearance_menu = tk.Menu(self.menu, tearoff=False)
+        appearance_menu.add_command(
+            label="Choose custom image...",
+            command=self._choose_custom_avatar,
+        )
+        appearance_menu.add_command(
+            label="Use saved custom image",
+            command=self._use_saved_custom_avatar,
+        )
+        appearance_menu.add_command(
+            label="Use Mochi",
+            command=self._use_mochi_avatar,
+        )
+        size_menu = tk.Menu(appearance_menu, tearoff=False)
+        for percent in AVATAR_SCALE_OPTIONS:
+            size_menu.add_radiobutton(
+                label=f"{percent}%",
+                variable=self.avatar_scale,
+                value=percent,
+                command=self._set_avatar_scale,
+            )
+        appearance_menu.add_cascade(label="Custom image size", menu=size_menu)
+        appearance_menu.add_separator()
+        appearance_menu.add_command(
+            label="Remove saved custom image...",
+            command=self._remove_custom_avatar,
+        )
+        self.menu.add_cascade(label="Appearance", menu=appearance_menu)
+        self.menu.add_separator()
         self.menu.add_checkbutton(
             label="Auto-wander",
             variable=self.auto_wander,
@@ -289,6 +331,14 @@ class MochiPet:
         self.last_activity_sample_at = now
         self.next_activity_save_at = now + 60.0
         self.user_is_idle = False
+
+        if self.appearance_mode.get() == "custom":
+            try:
+                self._load_custom_avatar()
+            except AvatarImageError:
+                self.appearance_mode.set("mochi")
+                self.message = "Custom image unavailable; using Mochi."
+                self.message_until = now + 5.0
 
         self.canvas.bind("<ButtonPress-1>", self._start_drag)
         self.canvas.bind("<B1-Motion>", self._drag)
@@ -339,6 +389,100 @@ class MochiPet:
             self.menu.tk_popup(event.x_root, event.y_root)
         finally:
             self.menu.grab_release()
+
+    def _load_custom_avatar(self) -> None:
+        left, right = load_avatar_frames(self.avatar_path, self.avatar_scale.get())
+        self.custom_avatar_frames = {
+            -1: ImageTk.PhotoImage(left, master=self.root),
+            1: ImageTk.PhotoImage(right, master=self.root),
+        }
+
+    def _show_avatar_error(self, error: AvatarImageError) -> None:
+        from tkinter import messagebox
+
+        messagebox.showerror(
+            "Mochi - Custom appearance",
+            str(error),
+            parent=self.root,
+        )
+
+    def _choose_custom_avatar(self) -> None:
+        from tkinter import filedialog
+
+        selected = filedialog.askopenfilename(
+            parent=self.root,
+            title="Choose a full-body image",
+            filetypes=(
+                ("Image files", "*.png *.jpg *.jpeg *.webp *.gif *.bmp"),
+                ("All files", "*.*"),
+            ),
+        )
+        if not selected:
+            return
+        try:
+            import_avatar(Path(selected), self.avatar_path)
+            self._load_custom_avatar()
+        except AvatarImageError as error:
+            self._show_avatar_error(error)
+            return
+        self.appearance_mode.set("custom")
+        self.message = "Custom look ready!"
+        self.message_until = time.monotonic() + 4.0
+        self._persist()
+
+    def _use_saved_custom_avatar(self) -> None:
+        try:
+            self._load_custom_avatar()
+        except AvatarImageError as error:
+            self._show_avatar_error(error)
+            return
+        self.appearance_mode.set("custom")
+        self.message = "Custom look restored."
+        self.message_until = time.monotonic() + 3.5
+        self._persist()
+
+    def _use_mochi_avatar(self) -> None:
+        self.appearance_mode.set("mochi")
+        self.message = "Mochi is back!"
+        self.message_until = time.monotonic() + 3.5
+        self._persist()
+
+    def _set_avatar_scale(self) -> None:
+        if self.appearance_mode.get() == "custom":
+            try:
+                self._load_custom_avatar()
+            except AvatarImageError as error:
+                self._show_avatar_error(error)
+                self.appearance_mode.set("mochi")
+        self._persist()
+
+    def _remove_custom_avatar(self) -> None:
+        from tkinter import messagebox
+
+        if not self.avatar_path.exists():
+            self._use_mochi_avatar()
+            self.message = "No saved custom image."
+            return
+        confirmed = messagebox.askyesno(
+            "Remove custom image?",
+            "Delete Mochi's processed local copy of the custom image?\n\n"
+            "Your original image will not be changed.",
+            parent=self.root,
+        )
+        if not confirmed:
+            return
+        try:
+            self.avatar_path.unlink()
+        except OSError as error:
+            self._show_avatar_error(
+                AvatarImageError("Mochi could not remove the saved custom image.")
+            )
+            return
+        self.custom_avatar_frames.clear()
+        self.appearance_mode.set("mochi")
+        self.message = "Saved custom image removed."
+        self.message_until = time.monotonic() + 4.0
+        self._persist()
 
     def _toggle_activity_monitoring(self) -> None:
         state = self.activity_monitoring.get()
@@ -504,6 +648,8 @@ class MochiPet:
         self.settings["activity_monitoring"] = self.activity_monitoring.get()
         self.settings["hydration_reminders"] = self.hydration_reminders.get()
         self.settings["hydration_interval_minutes"] = self.hydration_interval.get()
+        self.settings["appearance_mode"] = self.appearance_mode.get()
+        self.settings["avatar_scale_percent"] = self.avatar_scale.get()
         try:
             save_settings(self.settings, self.config_path)
         except OSError:
@@ -624,6 +770,11 @@ class MochiPet:
         happy = now < self.happy_until
         blinking = now < self.blink_until
 
+        if self.appearance_mode.get() == "custom" and self.custom_avatar_frames:
+            self._draw_custom_avatar(now, walking, bob)
+            self._draw_effects(now)
+            return
+
         def mirror_x(x: float) -> float:
             return center_x + (x - center_x) * self.direction
 
@@ -707,11 +858,36 @@ class MochiPet:
         line([116, 126, 135, 122], fill="#8f5535", width=2)
         line([116, 132, 138, 134], fill="#8f5535", width=2)
 
+        self._draw_effects(now)
+
+    def _draw_custom_avatar(self, now: float, walking: bool, bob: float) -> None:
+        frame = self.custom_avatar_frames.get(self.direction)
+        if frame is None:
+            return
+        center_x = WINDOW_WIDTH / 2
+        shadow_half_width = max(18, min(58, frame.width() * 0.36))
+        self.canvas.create_oval(
+            center_x - shadow_half_width,
+            184,
+            center_x + shadow_half_width,
+            199,
+            fill="#cbd5e1",
+            outline="",
+        )
+        stride = math.sin(now * 9.0) * 1.5 if walking else 0.0
+        self.canvas.create_image(
+            center_x + stride,
+            196 + bob,
+            image=frame,
+            anchor=tk.S,
+        )
+
+    def _draw_effects(self, now: float) -> None:
         # Rising hearts from a double-click.
         for heart_x, heart_y, born_at in self.hearts:
             age = now - born_at
             if 0.0 <= age <= 1.55:
-                canvas.create_text(
+                self.canvas.create_text(
                     heart_x,
                     heart_y - age * 34,
                     text="♥",
@@ -726,7 +902,7 @@ class MochiPet:
                 phase = max(0.0, effect_age - index * 0.16)
                 drop_y = 104 - phase * 25
                 size = max(3.0, 7.0 - phase)
-                canvas.create_polygon(
+                self.canvas.create_polygon(
                     base_x,
                     drop_y - size,
                     base_x - size,
@@ -737,7 +913,7 @@ class MochiPet:
                     outline="#0369a1",
                     width=1,
                 )
-                canvas.create_oval(
+                self.canvas.create_oval(
                     base_x - size,
                     drop_y,
                     base_x + size,
@@ -812,7 +988,12 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     config = settings_path()
     activity_file = config.with_name("activity.json")
-    reset_targets = (config, activity_file) if args.reset_all_data else (config,)
+    avatar_file = avatar_path_for_settings(config)
+    reset_targets = (
+        (config, activity_file, avatar_file)
+        if args.reset_all_data
+        else (config,)
+    )
     if args.reset_settings or args.reset_all_data:
         for target in reset_targets:
             try:

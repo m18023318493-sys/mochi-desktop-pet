@@ -3,13 +3,13 @@
 Thanks for helping Mochi grow.
 
 1. Open an issue describing the change or bug.
-2. Keep the runtime dependency-free unless there is a strong reason not to.
-3. Put display-independent logic in `pet_core.py` or `activity_core.py` so CI can test it without a desktop.
+2. Keep dependencies minimal; Pillow is used for safe custom-image processing.
+3. Put display-independent logic in `pet_core.py`, `activity_core.py`, or `avatar_core.py` so CI can test it without a desktop.
 4. Run the tests and compile check before opening a pull request:
 
    ```powershell
    python -m unittest discover -s tests -v
-   python -m py_compile activity_core.py pet_core.py mochi_pet.py
+   python -m py_compile activity_core.py avatar_core.py pet_core.py mochi_pet.py
    ```
 
 Please include your operating system, Python version, screen layout, and scaling percentage when reporting visual or positioning bugs.

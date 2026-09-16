@@ -64,6 +64,8 @@ class PetCoreTests(unittest.TestCase):
         self.assertIsNone(settings["y"])
         self.assertTrue(settings["auto_wander"])
         self.assertTrue(settings["always_on_top"])
+        self.assertEqual(settings["appearance_mode"], "mochi")
+        self.assertEqual(settings["avatar_scale_percent"], 90)
 
     def test_boolean_coordinates_are_not_accepted_as_integers(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -81,6 +83,8 @@ class PetCoreTests(unittest.TestCase):
                 "y": 240,
                 "auto_wander": False,
                 "always_on_top": True,
+                "appearance_mode": "custom",
+                "avatar_scale_percent": 75,
             }
             save_settings(expected, path)
             raw = json.loads(path.read_text(encoding="utf-8"))
@@ -109,6 +113,19 @@ class PetCoreTests(unittest.TestCase):
         self.assertFalse(loaded["activity_monitoring"])
         self.assertTrue(loaded["hydration_reminders"])
         self.assertEqual(loaded["hydration_interval_minutes"], 60)
+        self.assertEqual(loaded["appearance_mode"], "mochi")
+        self.assertEqual(loaded["avatar_scale_percent"], 90)
+
+    def test_invalid_appearance_preferences_fall_back_safely(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text(
+                '{"appearance_mode": "../../photo", "avatar_scale_percent": 999}',
+                encoding="utf-8",
+            )
+            loaded = load_settings(path)
+        self.assertEqual(loaded["appearance_mode"], "mochi")
+        self.assertEqual(loaded["avatar_scale_percent"], 90)
 
     def test_wander_target_stays_visible_and_moves(self):
         rng = random.Random(9)
